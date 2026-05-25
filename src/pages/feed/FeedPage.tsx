@@ -7,6 +7,11 @@ import { LogOut, Plus, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useQuery } from "@tanstack/react-query";
+
+import { storiesApi } from "@/api/stories/stories.api";
+import { StoryBar } from "@/components/stories";
+
 import { httpClient } from "@/api/common/http-client";
 import { postsApi } from "@/api/posts/posts.api";
 import {
@@ -15,13 +20,12 @@ import {
   FeedSidebar,
   PostCard,
   PostCardSkeleton,
-  StoryRail,
 } from "@/components/posts";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuthStore } from "@/stores/auth/auth-store";
+import { useAuthStore } from "@/stores/auth/auth.store";
 import type { Post } from "@/types/posts/post.types";
 
 const PAGE_SIZE = 10;
@@ -113,6 +117,13 @@ export default function FeedPage() {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return pages.length + 1;
     },
+  });
+
+  const activeStoriesQuery = useQuery({
+    queryKey: ["stories", "active"],
+    queryFn: storiesApi.getActiveStories,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const posts = useMemo(() => {
@@ -287,7 +298,11 @@ export default function FeedPage() {
         </header>
 
         <section className="mx-auto max-w-5xl px-4 py-5">
-          <StoryRail isAdmin={isAdmin} onCreatePost={goToCreatePost} />
+          <StoryBar
+            storyGroups={activeStoriesQuery.data ?? []}
+            isLoading={activeStoriesQuery.isLoading}
+            onRefresh={() => activeStoriesQuery.refetch()}
+          />
 
           <div className="mx-auto mt-6 max-w-3xl space-y-6">
             {feedQuery.isLoading && (

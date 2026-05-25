@@ -1,23 +1,24 @@
-import { useMutation } from "@tanstack/react-query";
 import {
   Bookmark,
   Eye,
   FileText,
-  Heart,
   MessageCircle,
   MoreHorizontal,
   Pencil,
   Pin,
   PinOff,
-  Send,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-import { postsApi } from "@/api/posts/posts.api";
+import {
+  CommentSection,
+  LikeButton,
+  ShareButton,
+} from "@/components/interactions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -259,18 +260,10 @@ export function PostCard({
   onDelete,
   onTogglePin,
 }: PostCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
-  const [optimisticLikeCount, setOptimisticLikeCount] = useState(
-    post.likeCount,
-  );
-
-  const likeMutation = useMutation({
-    mutationFn: () => postsApi.toggleLike(orgId, post.id),
-    onError: () => {
-      setIsLiked((current) => !current);
-      setOptimisticLikeCount((current) => current + (isLiked ? 1 : -1));
-    },
-  });
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [shareCount, setShareCount] = useState(post.shareCount);
 
   const organizationName = post.organizationName || "Komunitas Kampus";
 
@@ -278,138 +271,156 @@ export function PostCard({
     return [...post.media].sort((a, b) => a.orderIndex - b.orderIndex);
   }, [post.media]);
 
-  const handleLike = () => {
-    setIsLiked((current) => !current);
-    setOptimisticLikeCount((current) => current + (isLiked ? -1 : 1));
-    likeMutation.mutate();
-  };
+  useEffect(() => {
+    setLikeCount(post.likeCount);
+    setCommentCount(post.commentCount);
+    setShareCount(post.shareCount);
+  }, [post.likeCount, post.commentCount, post.shareCount]);
+
+  const shareUrl =
+    typeof window === "undefined"
+      ? `/organizations/${orgId}/posts/${post.id}`
+      : `${window.location.origin}/organizations/${orgId}/posts/${post.id}`;
 
   return (
-    <Card className="overflow-hidden rounded-2xl border-neutral-200 bg-white shadow-sm">
-      <CardHeader className="flex flex-row items-start gap-3 p-5">
-        <Avatar className="mt-1 h-12 w-12 border bg-white">
-          <AvatarImage src={post.organizationAvatarUrl ?? undefined} />
-          <AvatarFallback>{getInitials(organizationName)}</AvatarFallback>
-        </Avatar>
+    <>
+      <Card className="overflow-hidden rounded-2xl border-neutral-200 bg-white shadow-sm">
+        <CardHeader className="flex flex-row items-start gap-3 p-5">
+          <Avatar className="mt-1 h-12 w-12 border bg-white">
+            <AvatarImage src={post.organizationAvatarUrl ?? undefined} />
+            <AvatarFallback>{getInitials(organizationName)}</AvatarFallback>
+          </Avatar>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-lg font-bold tracking-tight text-neutral-950">
-              {organizationName}
-            </h2>
-            {post.isPinned && (
-              <Badge
-                variant="secondary"
-                className="gap-1 rounded-full bg-indigo-50 text-indigo-700"
-              >
-                <Pin className="h-3 w-3" />
-                Pinned
-              </Badge>
-            )}
-            {isOwnerAdmin && (
-              <span
-                className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ring-1 ${visibilityBadgeClassName(
-                  post.visibility,
-                )}`}
-              >
-                {visibilityLabel(post.visibility)}
-              </span>
-            )}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-lg font-bold tracking-tight text-neutral-950">
+                {organizationName}
+              </h2>
+              {post.isPinned && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 rounded-full bg-indigo-50 text-indigo-700"
+                >
+                  <Pin className="h-3 w-3" />
+                  Pinned
+                </Badge>
+              )}
+              {isOwnerAdmin && (
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ring-1 ${visibilityBadgeClassName(
+                    post.visibility,
+                  )}`}
+                >
+                  {visibilityLabel(post.visibility)}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-500">
+              <span>{formatPostTime(post.createdAt)}</span>
+              <span>•</span>
+              <Eye className="h-3.5 w-3.5" />
+            </div>
           </div>
 
-          <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-500">
-            <span>{formatPostTime(post.createdAt)}</span>
-            <span>•</span>
-            <Eye className="h-3.5 w-3.5" />
-          </div>
-        </div>
-
-        {isOwnerAdmin && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <MoreHorizontal className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => onEdit?.(post)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Caption
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onTogglePin?.(post)}>
-                {post.isPinned ? (
-                  <PinOff className="mr-2 h-4 w-4" />
-                ) : (
-                  <Pin className="mr-2 h-4 w-4" />
-                )}
-                {post.isPinned ? "Unpin" : "Pin"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete?.(post)}
-                className="text-red-600 focus:text-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Hapus
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </CardHeader>
-
-      <CardContent className="p-0">
-        <div className="px-5 pb-5">
-          <p className="font-semibold leading-relaxed text-neutral-950">
-            {post.title}
-          </p>
-          {post.caption && (
-            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-neutral-700">
-              {post.caption}
-            </p>
+          {isOwnerAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={() => onEdit?.(post)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Caption
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onTogglePin?.(post)}>
+                  {post.isPinned ? (
+                    <PinOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Pin className="mr-2 h-4 w-4" />
+                  )}
+                  {post.isPinned ? "Unpin" : "Pin"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onDelete?.(post)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-        </div>
+        </CardHeader>
 
-        <MediaArea media={sortedMedia} />
-      </CardContent>
-
-      <CardFooter className="block p-0">
-        <div className="flex items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-8">
-            <button
-              type="button"
-              onClick={handleLike}
-              className={`flex items-center gap-2 text-sm font-semibold transition ${
-                isLiked
-                  ? "text-rose-600"
-                  : "text-neutral-800 hover:text-rose-600"
-              }`}
-            >
-              <Heart className={`h-6 w-6 ${isLiked ? "fill-current" : ""}`} />
-              {formatNumber(optimisticLikeCount)}
-            </button>
-
-            <button className="flex items-center gap-2 text-sm font-semibold text-neutral-800 hover:text-indigo-700">
-              <MessageCircle className="h-6 w-6" />
-              {formatNumber(post.commentCount)}
-            </button>
-
-            <button className="flex items-center gap-2 text-sm font-semibold text-neutral-800 hover:text-indigo-700">
-              <Send className="h-6 w-6" />
-              {formatNumber(post.shareCount)}
-            </button>
+        <CardContent className="p-0">
+          <div className="px-5 pb-5">
+            <p className="font-semibold leading-relaxed text-neutral-950">
+              {post.title}
+            </p>
+            {post.caption && (
+              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-neutral-700">
+                {post.caption}
+              </p>
+            )}
           </div>
 
-          <Bookmark className="h-6 w-6 text-neutral-800" />
-        </div>
+          <MediaArea media={sortedMedia} />
+        </CardContent>
 
-        {isOwnerAdmin && (
-          <div className="border-t bg-neutral-50 px-5 py-3 text-xs font-semibold text-neutral-500">
-            {formatNumber(optimisticLikeCount)} Likes ·{" "}
-            {formatNumber(post.commentCount)} Comments ·{" "}
-            {formatNumber(post.shareCount)} Shares
+        <CardFooter className="block p-0">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-8">
+              <LikeButton
+                postId={post.id}
+                initialLikeCount={likeCount}
+                onLikeCountChange={setLikeCount}
+              />
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCommentsOpen(true)}
+                className="gap-2 px-0 font-semibold text-neutral-800 hover:bg-transparent hover:text-indigo-700"
+              >
+                <MessageCircle className="h-6 w-6" />
+                {formatNumber(commentCount)}
+              </Button>
+
+              <ShareButton
+                postId={post.id}
+                initialShareCount={shareCount}
+                shareUrl={shareUrl}
+                title={post.title}
+                text={post.caption}
+                onShareCountChange={setShareCount}
+              />
+            </div>
+
+            <Bookmark className="h-6 w-6 text-neutral-800" />
           </div>
-        )}
-      </CardFooter>
-    </Card>
+
+          {isOwnerAdmin && (
+            <div className="border-t bg-neutral-50 px-5 py-3 text-xs font-semibold text-neutral-500">
+              {formatNumber(likeCount)} Likes · {formatNumber(commentCount)}{" "}
+              Comments · {formatNumber(shareCount)} Shares
+            </div>
+          )}
+        </CardFooter>
+      </Card>
+
+      <CommentSection
+        postId={post.id}
+        open={isCommentsOpen}
+        onOpenChange={setIsCommentsOpen}
+        isOwnerAdmin={isOwnerAdmin}
+        initialCommentCount={commentCount}
+        onCommentCountChange={setCommentCount}
+      />
+    </>
   );
 }

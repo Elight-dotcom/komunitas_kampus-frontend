@@ -1,6 +1,5 @@
 import { Lock, UserRound } from "lucide-react";
 import { FormEvent, useState } from "react";
-import { AxiosError } from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { AuthBrand } from "@/components/auth/auth-brand";
@@ -11,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/auth";
-import type { ApiResponse } from "@/types/auth";
 import { getFirstApiError } from "@/lib/auth-validation";
 
 export function LoginPage() {
@@ -42,26 +40,35 @@ export function LoginPage() {
 
       if (!response.success || !response.data) {
         setFormError(response.message);
+        setIsSubmitting(false);
         return;
       }
 
       setAuthFromLoginResponse(response.data);
-      navigate(response.data.role === "Organisasi" ? "/organization" : "/home", {
-        replace: true,
-      });
-    } catch (error) {
-      if (error instanceof AxiosError<ApiResponse<unknown>>) {
-        setFormError(
-          getFirstApiError(error.response?.data.errors) ??
-            error.response?.data.message ??
-            "Login gagal. Cek email/username dan password."
-        );
-        return;
-      }
+      console.log("Login success, role:", response.data.role);
 
-      setFormError("Terjadi kesalahan saat login.");
-    } finally {
+      if (response.data.role === "Organisasi") {
+        // Get orgId from store after update (store now extracts from JWT)
+        const storeOrgId = useAuthStore.getState().user?.organizationId;
+        console.log("Store orgId:", storeOrgId);
+        if (storeOrgId) {
+          navigate(`/organizations/${storeOrgId}/home`, { replace: true });
+        } else {
+          console.error("No organization ID available!");
+          setFormError("Login berhasil tapi tidak dapat menemukan organisasi. Hubungi admin.");
+          setIsSubmitting(false);
+        }
+      } else {
+        navigate("/user/home", { replace: true });
+      }
+    } catch (err) {
       setIsSubmitting(false);
+      const maybeError = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      setFormError(
+        getFirstApiError(maybeError.response?.data?.errors) ??
+          maybeError.response?.data?.message ??
+          "Login gagal. Cek email/username dan password."
+      );
     }
   }
 

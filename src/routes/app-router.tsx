@@ -4,10 +4,47 @@ import {
   RegisterOrganizationPage,
   RegisterUserPage,
 } from "@/pages/auth";
-import { FeedPage } from "@/pages/feed";
-import { InvitationInboxPage } from "@/pages/invitation";
-import { MemberListPage, PendingRequestsPage } from "@/pages/members";
-import { createBrowserRouter } from "react-router-dom";
+import { MemberListPage } from "@/pages/members";
+import { NotificationsPage } from "@/pages/notifications";
+import UserHomePage from "@/pages/user/UserHomePage";
+import ExplorePage from "@/pages/user/ExplorePage";
+import OrganizationProfilePage from "@/pages/user/OrganizationProfilePage";
+import OrgHomePage from "@/pages/organization/OrgHomePage";
+import { createBrowserRouter, redirect } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth/auth.store";
+
+function authLoader() {
+  const auth = useAuthStore.getState();
+  if (!auth.isAuthenticated) {
+    return redirect("/login");
+  }
+  return null;
+}
+
+function userLoader() {
+  const auth = useAuthStore.getState();
+  if (!auth.isAuthenticated) {
+    return redirect("/login");
+  }
+  if (auth.role === "Organisasi") {
+    const orgId = auth.user?.organizationId as string | undefined;
+    if (orgId) {
+      return redirect(`/organizations/${orgId}/home`);
+    }
+  }
+  return null;
+}
+
+function orgLoader() {
+  const auth = useAuthStore.getState();
+  if (!auth.isAuthenticated) {
+    return redirect("/login");
+  }
+  if (auth.role === "Mahasiswa") {
+    return redirect("/user/home");
+  }
+  return null;
+}
 
 export const appRouter = createBrowserRouter([
   {
@@ -27,20 +64,38 @@ export const appRouter = createBrowserRouter([
     element: <RegisterOrganizationPage />,
   },
   {
-    path: "/organizations/:orgId/posts",
-    element: <FeedPage />,
+    path: "/user/home",
+    element: <UserHomePage />,
+    loader: userLoader,
   },
-
   {
-    path: "/invitations",
-    element: <InvitationInboxPage />,
+    path: "/user/explore",
+    element: <ExplorePage />,
+    loader: userLoader,
+  },
+  {
+    path: "/user/notifications",
+    element: <NotificationsPage />,
+    loader: authLoader,
+  },
+  {
+    path: "/organizations/:orgId/notifications",
+    element: <NotificationsPage />,
+    loader: orgLoader,
+  },
+  {
+    path: "/organizations/:orgId/profile",
+    element: <OrganizationProfilePage />,
+    loader: userLoader,
+  },
+  {
+    path: "/organizations/:orgId/home",
+    element: <OrgHomePage />,
+    loader: orgLoader,
   },
   {
     path: "/organizations/:orgId/members",
     element: <MemberListPage />,
-  },
-  {
-    path: "/organizations/:orgId/requests",
-    element: <PendingRequestsPage />,
+    loader: orgLoader,
   },
 ]);

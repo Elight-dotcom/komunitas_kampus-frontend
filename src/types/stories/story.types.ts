@@ -31,6 +31,7 @@ export interface Story {
   backgroundColor?: string | null;
   expiresAt: string;
   isViewed: boolean;
+  viewCount: number;
   createdAt?: string | null;
 }
 

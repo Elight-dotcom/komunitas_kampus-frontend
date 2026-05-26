@@ -1,16 +1,10 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { Plus, Search, Sparkles } from "lucide-react";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { storiesApi } from "@/api/stories/stories.api";
-import { StoryBar } from "@/components/stories";
-
+import { StoryBar, CreateStoryModal } from "@/components/stories";
 import { postsApi } from "@/api/posts/posts.api";
 import {
   CreatePostModal,
@@ -19,33 +13,14 @@ import {
   PostCardSkeleton,
 } from "@/components/posts";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth/auth.store";
 import type { Post } from "@/types/posts/post.types";
+import { userFeedApi } from "@/api/feed/user-feed.api";
 import { OrgSidebar } from "@/components/layouts/OrgSidebar";
 
 const PAGE_SIZE = 10;
-
-type AuthStoreShape = {
-  token?: string | null;
-  accessToken?: string | null;
-  role?: string | null;
-  organizationId?: string | null;
-  user?: {
-    accountId?: string | null;
-    username?: string | null;
-    email?: string | null;
-    role?: string | null;
-    organizationId?: string | null;
-    organization_id?: string | null;
-  } | null;
-  resetAuth?: () => void;
-  clearAuth?: () => void;
-  logout?: () => void;
-  setAccessToken?: (token: string | null) => void;
-};
 
 function sortPinnedFirst(posts: Post[]) {
   return [...posts].sort((left, right) => {
@@ -63,53 +38,32 @@ function sortPinnedFirst(posts: Post[]) {
   });
 }
 
-function getNextPinOrder(posts: Post[]) {
-  const usedOrders = posts
-    .filter((post) => post.isPinned)
-    .map((post) => post.pinOrder)
-    .filter((value): value is number => typeof value === "number");
-
-  for (const order of [1, 2, 3]) {
-    if (!usedOrders.includes(order)) {
-      return order;
-    }
-  }
-
-  return 3;
-}
-
-function isOrganizationRole(role?: string | null) {
-  return (
-    role?.toLowerCase() === "organization" ||
-    role?.toLowerCase() === "organisasi"
-  );
-}
-
-export default function FeedPage() {
+export default function OrgHomePage() {
   const { orgId } = useParams<{ orgId: string }>();
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const infiniteScrollRef = useRef<HTMLDivElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [isCreateStoryOpen, setIsCreateStoryOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
 
-  const auth = useAuthStore() as unknown as AuthStoreShape;
+  const auth = useAuthStore();
   const role = auth.role ?? auth.user?.role ?? null;
-  const currentOrganizationId =
-    auth.organizationId ??
-    auth.user?.organizationId ??
-    auth.user?.organization_id ??
-    null;
+  const currentOrgId = auth.user?.organizationId ?? null;
+
+  console.log("OrgHomePage auth:", { role, currentOrgId, orgId });
 
   const isAdmin =
-    isOrganizationRole(role) &&
+    role?.toLowerCase() === "organisasi" &&
     Boolean(orgId) &&
-    currentOrganizationId === orgId;
+    currentOrgId === orgId;
+
+  console.log("isAdmin:", isAdmin, "role check:", role?.toLowerCase() === "organisasi");
 
   const feedQuery = useInfiniteQuery({
-    queryKey: ["posts", "feed", orgId],
-    enabled: Boolean(orgId),
+    queryKey: ["posts", "global"],
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => postsApi.getFeed(orgId!, pageParam, PAGE_SIZE),
+    queryFn: ({ pageParam }) => userFeedApi.getGlobalFeed(pageParam, PAGE_SIZE),
     getNextPageParam: (lastPage, pages) => {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return pages.length + 1;
@@ -121,66 +75,69 @@ export default function FeedPage() {
     queryFn: storiesApi.getActiveStories,
     refetchInterval: 60_000,
     staleTime: 30_000,
+    enabled: !isAdmin,
   });
+
+  const myStoriesQuery = useQuery({
+    queryKey: ["stories", "my-org", orgId],
+    queryFn: () => storiesApi.getMyOrganizationStories(orgId!),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    enabled: isAdmin && Boolean(orgId),
+  });
+
+  const displayStories = isAdmin
+    ? myStoriesQuery.data ?? []
+    : activeStoriesQuery.data ?? [];
+
+  const displayStoryGroups = isAdmin && myStoriesQuery.data
+    ? [{
+        organizationId: orgId!,
+        orgName: auth.user?.username ?? "Organisasi",
+        orgAvatar: null,
+        hasUnviewed: false,
+        stories: myStoriesQuery.data,
+      }]
+    : activeStoriesQuery.data ?? [];
 
   const posts = useMemo(() => {
     return sortPinnedFirst(feedQuery.data?.pages.flat() ?? []);
   }, [feedQuery.data]);
 
+  const queryClient = useQueryClient();
+
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => postsApi.deletePost(orgId!, postId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts", "feed", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["posts", "global"] });
     },
   });
+
+  const getNextPinOrder = (currentPosts: Post[]) => {
+    const usedOrders = currentPosts
+      .filter((post) => post.isPinned)
+      .map((post) => post.pinOrder)
+      .filter((value): value is number => typeof value === "number");
+
+    for (const order of [1, 2, 3]) {
+      if (!usedOrders.includes(order)) {
+        return order;
+      }
+    }
+    return 3;
+  };
 
   const togglePinMutation = useMutation({
     mutationFn: (post: Post) => {
       const nextPinnedState = !post.isPinned;
       const nextPinOrder = nextPinnedState ? getNextPinOrder(posts) : null;
-
       return postsApi.togglePin(orgId!, post.id, {
         isPinned: nextPinnedState,
         pinOrder: nextPinOrder,
       });
     },
-    onMutate: async (post) => {
-      await queryClient.cancelQueries({ queryKey: ["posts", "feed", orgId] });
-      const previousFeed = queryClient.getQueryData(["posts", "feed", orgId]);
-
-      queryClient.setQueryData(["posts", "feed", orgId], (oldData: unknown) => {
-        if (!oldData || typeof oldData !== "object" || !("pages" in oldData)) {
-          return oldData;
-        }
-
-        const data = oldData as { pages: Post[][]; pageParams: unknown[] };
-        const nextPinnedState = !post.isPinned;
-        const nextPinOrder = nextPinnedState ? getNextPinOrder(posts) : null;
-
-        return {
-          ...data,
-          pages: data.pages.map((page) =>
-            page.map((item) =>
-              item.id === post.id
-                ? { ...item, isPinned: nextPinnedState, pinOrder: nextPinOrder }
-                : item,
-            ),
-          ),
-        };
-      });
-
-      return { previousFeed };
-    },
-    onError: (_error, _post, context) => {
-      if (context?.previousFeed) {
-        queryClient.setQueryData(
-          ["posts", "feed", orgId],
-          context.previousFeed,
-        );
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts", "feed", orgId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts", "global"] });
     },
   });
 
@@ -210,8 +167,14 @@ export default function FeedPage() {
   }, [feedQuery]);
 
   const goToCreatePost = () => {
-    if (!orgId) return;
     setIsCreatePostOpen(true);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/organizations/${orgId}/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
   };
 
   if (!orgId) {
@@ -220,9 +183,6 @@ export default function FeedPage() {
         <div className="rounded-2xl border bg-white p-8 text-center shadow-sm">
           <p className="text-lg font-bold text-neutral-950">
             Organization ID tidak ditemukan.
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">
-            Pastikan route memakai format /organizations/:orgId/posts.
           </p>
         </div>
       </main>
@@ -235,21 +195,23 @@ export default function FeedPage() {
         <OrgSidebar
           orgId={orgId}
           isAdmin={isAdmin}
-          userName={auth.user?.username ?? auth.user?.email ?? "User"}
-          userRole={role ?? "viewer"}
+          userName={auth.user?.username ?? auth.user?.email ?? "Organization"}
+          userRole={role ?? "organisasi"}
           onCreatePost={goToCreatePost}
         />
 
         <header className="sticky top-0 z-30 border-b bg-white/90 backdrop-blur xl:pl-0">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
             <div className="hidden flex-1 items-center md:flex">
-              <div className="relative w-full max-w-md">
+              <form onSubmit={handleSearch} className="relative w-full max-w-md">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
                 <Input
-                  placeholder="Search campus, organizations..."
+                  placeholder="Search organizations..."
                   className="h-12 rounded-full border-neutral-300 bg-white pl-12 shadow-none"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              </div>
+              </form>
             </div>
 
             <div className="flex flex-1 items-center gap-3 md:hidden">
@@ -268,9 +230,9 @@ export default function FeedPage() {
 
         <section className="mx-auto max-w-5xl px-4 py-5">
           <StoryBar
-            storyGroups={activeStoriesQuery.data ?? []}
-            isLoading={activeStoriesQuery.isLoading}
-            onRefresh={() => activeStoriesQuery.refetch()}
+            storyGroups={displayStoryGroups}
+            isLoading={isAdmin ? myStoriesQuery.isLoading : activeStoriesQuery.isLoading}
+            onRefresh={() => isAdmin ? myStoriesQuery.refetch() : activeStoriesQuery.refetch()}
           />
 
           <div className="mx-auto mt-6 max-w-3xl space-y-6">
@@ -283,46 +245,28 @@ export default function FeedPage() {
 
             {!feedQuery.isLoading && posts.length === 0 && (
               <div className="rounded-3xl border bg-white px-6 py-14 text-center shadow-sm">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50">
-                  <Sparkles className="h-8 w-8 text-indigo-700" />
-                </div>
                 <h2 className="text-xl font-bold text-neutral-950">
                   Belum ada postingan
                 </h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm text-neutral-500">
-                  Feed resmi organisasi akan tampil di sini setelah admin
-                  membuat postingan.
+                  Postingan dari organisasi akan tampil di sini.
                 </p>
-                {isAdmin && (
-                  <Button
-                    className="mt-6 rounded-full bg-indigo-800 hover:bg-indigo-900"
-                    onClick={goToCreatePost}
-                  >
-                    Buat Postingan
-                  </Button>
-                )}
               </div>
             )}
 
             {posts.map((post) => (
               <PostCard
                 key={post.id}
-                orgId={orgId}
+                orgId={post.organizationId}
                 post={post}
                 isOwnerAdmin={isAdmin && post.organizationId === orgId}
                 onEdit={(selectedPost) => setEditingPost(selectedPost)}
                 onDelete={(selectedPost) => {
-                  const confirmed = window.confirm(
-                    "Yakin ingin menghapus postingan ini? File media juga akan dihapus dari MinIO.",
-                  );
-
-                  if (confirmed) {
+                  if (window.confirm("Yakin ingin menghapus postingan ini?")) {
                     deleteMutation.mutate(selectedPost.id);
                   }
                 }}
-                onTogglePin={(selectedPost) =>
-                  togglePinMutation.mutate(selectedPost)
-                }
+                onTogglePin={(selectedPost) => togglePinMutation.mutate(selectedPost)}
               />
             ))}
 
@@ -342,19 +286,9 @@ export default function FeedPage() {
             )}
           </div>
         </section>
-
-        {isAdmin && (
-          <Button
-            size="icon"
-            className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-2xl bg-indigo-800 shadow-xl hover:bg-indigo-900 xl:hidden"
-            onClick={goToCreatePost}
-          >
-            <Plus className="h-7 w-7" />
-          </Button>
-        )}
       </main>
 
-      {orgId && (
+      {orgId && isAdmin && (
         <>
           <CreatePostModal
             orgId={orgId}
@@ -370,7 +304,25 @@ export default function FeedPage() {
               if (!open) setEditingPost(null);
             }}
           />
+
+          <CreateStoryModal
+            orgId={orgId}
+            open={isCreateStoryOpen}
+            onOpenChange={setIsCreateStoryOpen}
+            onSuccess={() => activeStoriesQuery.refetch()}
+          />
         </>
+      )}
+
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => setIsCreateStoryOpen(true)}
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-fuchsia-500 via-rose-500 to-amber-400 text-white shadow-lg transition hover:scale-105 hover:shadow-xl z-40"
+          aria-label="Buat Story Baru"
+        >
+          <Plus className="h-7 w-7" />
+        </button>
       )}
     </>
   );

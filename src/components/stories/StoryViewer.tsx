@@ -285,9 +285,16 @@ export function StoryViewer({
                   <p className="truncate text-sm font-bold">
                     {currentGroup.orgName}
                   </p>
-                  <p className="text-xs text-white/70">
-                    {formatRelativeTime(currentStory.createdAt)}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-white/70">
+                      {formatRelativeTime(currentStory.createdAt)}
+                    </p>
+                    {currentStory.viewCount > 0 && (
+                      <span className="text-xs text-white/50">
+                        • {currentStory.viewCount} penonton
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

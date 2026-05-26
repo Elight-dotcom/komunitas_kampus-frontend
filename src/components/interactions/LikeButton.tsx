@@ -26,8 +26,7 @@ export function LikeButton({
   className,
   onLikeCountChange,
 }: LikeButtonProps) {
-  const auth = useAuthStore((state) => state) as any;
-  const userId = auth.userId ?? auth.accountId ?? auth.user?.accountId ?? auth.user?.id;
+  const userId = useAuthStore((state) => state.userId);
 
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);

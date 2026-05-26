@@ -278,11 +278,8 @@ export function CommentSection({
   onCommentCountChange,
 }: CommentSectionProps) {
   const queryClient = useQueryClient();
-  const auth = useAuthStore((state) => state) as any;
-  const currentUserId =
-    auth.userId ?? auth.accountId ?? auth.user?.accountId ?? auth.user?.id;
-  const accessToken =
-    auth.token ?? auth.accessToken ?? auth.user?.accessToken ?? auth.session?.accessToken;
+  const currentUserId = useAuthStore((state) => state.userId);
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   const [content, setContent] = useState("");
   const [localCommentCount, setLocalCommentCount] =

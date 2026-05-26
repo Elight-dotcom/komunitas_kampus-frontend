@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth/auth.store";
-import type { StoryGroup } from "@/types/story.types";
+import type { StoryGroup } from "@/types/stories/story.types";
 import { CreateStoryModal } from "./CreateStoryModal";
 import { StoryViewer } from "./StoryViewer";
 
@@ -61,7 +61,8 @@ export function StoryBar({ storyGroups, isLoading, onRefresh }: StoryBarProps) {
     return storyGroups.filter((group) => group.stories.length > 0);
   }, [storyGroups]);
 
-  const canCreateStory = role === "organization" && Boolean(currentOrgId);
+  const canCreateStory =
+    (role === "organisasi" || role === "organization") && Boolean(currentOrgId);
 
   if (isLoading) {
     return (

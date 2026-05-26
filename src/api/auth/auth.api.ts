@@ -1,14 +1,14 @@
 import { httpClient } from "@/api/common";
 import type {
-    ApiResponse,
-    LoginRequest,
-    LoginResponse,
-    LogoutResponse,
-    RegisterOrganizationRequest,
-    RegisterOrganizationResponse,
-    RegisterUserRequest,
-    RegisterUserResponse,
-    UsernameAvailabilityResponse,
+  ApiResponse,
+  LoginRequest,
+  LoginResponse,
+  LogoutResponse,
+  RegisterOrganizationRequest,
+  RegisterOrganizationResponse,
+  RegisterUserRequest,
+  RegisterUserResponse,
+  UsernameAvailabilityResponse,
 } from "@/types/auth";
 
 export const authApi = {

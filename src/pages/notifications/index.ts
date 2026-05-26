@@ -1,0 +1,1 @@
+export { NotificationsPage, default } from "./NotificationsPage";

@@ -8,7 +8,8 @@ import type {
   ResolveMembershipPayload,
   RespondInvitePayload,
   SendInvitePayload,
-} from "@/types/membership.types";
+  SentInvitation,
+} from "@/types/membership/membership.types";
 
 function unwrap<T>(response: ApiResponse<T>) {
   return response.data;
@@ -60,6 +61,14 @@ export const membershipApi = {
   async getPendingRequests(orgId: string): Promise<MemberRequest[]> {
     const response = await httpClient.get<ApiResponse<MemberRequest[]>>(
       `/api/organizations/${orgId}/requests`
+    );
+
+    return unwrap(response.data);
+  },
+
+  async getSentInvitations(orgId: string): Promise<SentInvitation[]> {
+    const response = await httpClient.get<ApiResponse<SentInvitation[]>>(
+      `/api/organizations/${orgId}/invitations/sent`
     );
 
     return unwrap(response.data);

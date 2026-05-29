@@ -75,6 +75,19 @@ export interface SendInvitePayload {
   username: string;
 }
 
+export interface SentInvitation {
+  membershipId: string;
+  accountId: string;
+  organizationId: string;
+  username: string | null;
+  email: string | null;
+  fullName: string | null;
+  university: string | null;
+  status: MembershipStatusValue;
+  requestedAt: string;
+  resolvedAt: string | null;
+}
+
 export interface ResolveMembershipPayload {
   action: "accept" | "reject";
 }

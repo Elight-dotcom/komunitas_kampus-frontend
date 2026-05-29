@@ -7,7 +7,7 @@ import type {
   StoryGroup,
   StoryMediaType,
   StoryPresignedUploadUrlResponse,
-} from "@/types/story.types";
+} from "@/types/stories/story.types";
 
 function unwrap<T>(response: ApiResponse<T>) {
   return response.data;
@@ -17,6 +17,14 @@ export const storiesApi = {
   async getActiveStories(): Promise<StoryGroup[]> {
     const response = await httpClient.get<ApiResponse<StoryGroup[]>>(
       "/api/stories",
+    );
+
+    return unwrap(response.data);
+  },
+
+  async getMyOrganizationStories(orgId: string): Promise<Story[]> {
+    const response = await httpClient.get<ApiResponse<Story[]>>(
+      `/api/organizations/${orgId}/stories`,
     );
 
     return unwrap(response.data);

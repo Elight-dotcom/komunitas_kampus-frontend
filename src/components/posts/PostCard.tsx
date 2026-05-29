@@ -144,13 +144,15 @@ function LoadingMediaPlaceholder() {
 function ImageGrid({ media }: { media: PostMedia[] }) {
   const visibleMedia = media.slice(0, 3);
   const extraCount = media.length - visibleMedia.length;
+  const isSingleImage = visibleMedia.length === 1;
 
   return (
-    <div className="grid grid-cols-1 gap-1 bg-neutral-100 sm:grid-cols-3">
+    <div className={`grid gap-1 bg-neutral-100 ${isSingleImage ? "grid-cols-1 max-w-lg mx-auto" : "grid-cols-1 sm:grid-cols-3"}`}>
       {visibleMedia.map((item, index) => (
         <div
           key={item.id || item.fileUrl}
-          className="relative aspect-square overflow-hidden bg-neutral-100"
+          className="relative overflow-hidden bg-neutral-100"
+          style={isSingleImage ? { aspectRatio: "1/1" } : { aspectRatio: "1/1" }}
         >
           <img
             src={resolveFileUrl(item.fileUrl)}

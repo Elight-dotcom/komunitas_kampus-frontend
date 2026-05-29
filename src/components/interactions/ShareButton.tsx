@@ -33,9 +33,7 @@ export function ShareButton({
   className,
   onShareCountChange,
 }: ShareButtonProps) {
-  const auth = useAuthStore((state) => state) as any;
-  const userId =
-    auth.userId ?? auth.accountId ?? auth.user?.accountId ?? auth.user?.id;
+  const userId = useAuthStore((state) => state.userId);
 
   const [shareCount, setShareCount] = useState(initialShareCount);
 

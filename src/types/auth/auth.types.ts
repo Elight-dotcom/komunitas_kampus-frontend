@@ -14,6 +14,7 @@ export type AuthUser = {
   username: string;
   email: string;
   role: AuthRole;
+  organizationId?: string;
 };
 
 export type LoginRequest = {
@@ -30,6 +31,7 @@ export type LoginResponse = {
   accessTokenExpiresAt: string;
   refreshTokenExpiresAt: string;
   tokenType: string;
+  organizationId?: string;
 };
 
 export type RegisterUserRequest = {

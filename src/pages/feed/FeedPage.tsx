@@ -313,7 +313,7 @@ export default function FeedPage() {
                 onEdit={(selectedPost) => setEditingPost(selectedPost)}
                 onDelete={(selectedPost) => {
                   const confirmed = window.confirm(
-                    "Yakin ingin menghapus postingan ini? File media juga akan dihapus dari MinIO.",
+                    "Yakin ingin menghapus postingan ini? File media juga akan dihapus dari Backblaze.",
                   );
 
                   if (confirmed) {

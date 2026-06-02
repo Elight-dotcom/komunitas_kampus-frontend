@@ -352,7 +352,7 @@ export function CreatePostModal({
           });
         } catch (uploadError) {
           throw new Error(
-            `Upload ${item.file.name} ke MinIO gagal. Pastikan MinIO aktif dan CORS bucket sudah benar.`,
+            `Upload ${item.file.name} ke Backblaze gagal. Pastikan endpoint, bucket, dan CORS sudah benar.`,
           );
         }
 
@@ -377,7 +377,7 @@ export function CreatePostModal({
         });
       } catch (createError) {
         throw new Error(
-          "File sudah ter-upload ke MinIO, tetapi backend gagal menyimpan post. Cek payload createPost.",
+          "File sudah ter-upload ke Backblaze, tetapi backend gagal menyimpan post. Cek payload createPost.",
         );
       }
 
@@ -408,8 +408,8 @@ export function CreatePostModal({
         <DialogHeader>
           <DialogTitle>Buat Postingan Baru</DialogTitle>
           <DialogDescription>
-            Upload langsung ke MinIO lewat presigned URL, lalu simpan metadata
-            post ke backend.
+            Upload langsung ke Backblaze lewat presigned URL, lalu simpan
+            metadata post ke backend.
           </DialogDescription>
         </DialogHeader>
 
@@ -550,7 +550,7 @@ export function CreatePostModal({
             {isPublishing && (
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-medium text-neutral-600">
-                  <span>Upload ke MinIO</span>
+                  <span>Upload ke Backblaze</span>
                   <span>{uploadProgress}%</span>
                 </div>
                 <Progress value={uploadProgress} />

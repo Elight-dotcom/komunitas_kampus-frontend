@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveBackblazeFileUrl } from "@/lib/backblaze";
 import type { Post, PostMedia } from "@/types/posts/post.types";
 import {
   normalizeMediaStatus,
@@ -90,21 +91,7 @@ function formatNumber(value: number) {
 }
 
 function resolveFileUrl(fileUrl: string) {
-  if (!fileUrl) return "";
-
-  if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
-    return fileUrl;
-  }
-
-  const publicBaseUrl = import.meta.env.VITE_MINIO_PUBLIC_BASE_URL as
-    | string
-    | undefined;
-
-  if (!publicBaseUrl) {
-    return fileUrl;
-  }
-
-  return `${publicBaseUrl.replace(/\/$/, "")}/${fileUrl.replace(/^\//, "")}`;
+  return resolveBackblazeFileUrl(fileUrl);
 }
 
 function visibilityBadgeClassName(visibility: Post["visibility"]) {
@@ -147,12 +134,16 @@ function ImageGrid({ media }: { media: PostMedia[] }) {
   const isSingleImage = visibleMedia.length === 1;
 
   return (
-    <div className={`grid gap-1 bg-neutral-100 ${isSingleImage ? "grid-cols-1 max-w-lg mx-auto" : "grid-cols-1 sm:grid-cols-3"}`}>
+    <div
+      className={`grid gap-1 bg-neutral-100 ${isSingleImage ? "grid-cols-1 max-w-lg mx-auto" : "grid-cols-1 sm:grid-cols-3"}`}
+    >
       {visibleMedia.map((item, index) => (
         <div
           key={item.id || item.fileUrl}
           className="relative overflow-hidden bg-neutral-100"
-          style={isSingleImage ? { aspectRatio: "1/1" } : { aspectRatio: "1/1" }}
+          style={
+            isSingleImage ? { aspectRatio: "1/1" } : { aspectRatio: "1/1" }
+          }
         >
           <img
             src={resolveFileUrl(item.fileUrl)}
@@ -208,8 +199,8 @@ function DocumentMedia({ item }: { item: PostMedia }) {
             loading={<Skeleton className="h-96 w-72 rounded-xl" />}
             error={
               <div className="p-8 text-center text-sm text-neutral-500">
-                PDF belum bisa ditampilkan. Pastikan file URL publik MinIO sudah
-                benar.
+                PDF belum bisa ditampilkan. Pastikan file URL publik Backblaze
+                sudah benar.
               </div>
             }
           >

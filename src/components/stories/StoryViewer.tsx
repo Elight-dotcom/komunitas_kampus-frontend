@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { storiesApi } from "@/api/stories/stories.api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { resolveBackblazeFileUrl } from "@/lib/backblaze";
 import type { Story, StoryGroup } from "@/types/stories/story.types";
 import { normalizeStoryMediaType } from "@/types/stories/story.types";
 
@@ -42,21 +43,7 @@ function formatRelativeTime(value?: string | null) {
 }
 
 function resolveFileUrl(fileUrl?: string | null) {
-  if (!fileUrl) return "";
-
-  if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
-    return fileUrl;
-  }
-
-  const publicBaseUrl = import.meta.env.VITE_MINIO_PUBLIC_BASE_URL as
-    | string
-    | undefined;
-
-  if (!publicBaseUrl) {
-    return fileUrl;
-  }
-
-  return `${publicBaseUrl.replace(/\/$/, "")}/${fileUrl.replace(/^\//, "")}`;
+  return resolveBackblazeFileUrl(fileUrl ?? "");
 }
 
 function getStoryDuration(story: Story, videoDurationMs: number | null) {

@@ -247,7 +247,14 @@ export function StoryViewer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[100dvh] max-h-[100dvh] w-screen max-w-none border-none bg-neutral-950 p-0 text-white sm:rounded-none">
+      <DialogContent
+        className="overflow-hidden border-none bg-neutral-950 p-0 text-white shadow-2xl sm:rounded-[28px]"
+        style={{
+          aspectRatio: "9 / 16",
+          width: "min(92vw, calc(92vh * 9 / 16))",
+          maxHeight: "92vh",
+        }}
+      >
         <DialogTitle className="sr-only">Story Viewer</DialogTitle>
 
         <div className="relative flex h-full w-full flex-col overflow-hidden">
@@ -327,7 +334,7 @@ export function StoryViewer({
               <img
                 src={resolveFileUrl(currentStory.mediaUrl)}
                 alt={currentStory.orgName}
-                className="h-full w-full object-contain sm:object-cover"
+                className="h-full w-full object-cover"
                 draggable={false}
               />
             )}

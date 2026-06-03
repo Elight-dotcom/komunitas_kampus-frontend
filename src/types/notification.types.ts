@@ -55,9 +55,9 @@ export function getNotificationMessage(notification: Notification): string {
     case "invite_sent":
       return `${actor} mengundang Anda untuk bergabung`;
     case "invite_accepted":
-      return `${actor} telah menerima undangan`;
+      return `Anda telah menerima undangan dari ${actor}`;
     case "invite_rejected":
-      return `${actor} telah menolak undangan`;
+      return `Anda telah menolak undangan dari ${actor}`;
   }
 }
 

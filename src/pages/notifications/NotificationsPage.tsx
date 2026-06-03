@@ -1,43 +1,64 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   CheckCircle,
   Clock,
   Inbox,
+  Loader2,
   Mail,
   UserPlus,
   XCircle,
 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
+import { membershipApi } from "@/api/membership/membership.api";
 import { notificationsApi } from "@/api/notifications/notifications.api";
-import { UserSidebar } from "@/components/layouts/UserSidebar";
 import { OrgSidebar } from "@/components/layouts/OrgSidebar";
+import { UserSidebar } from "@/components/layouts/UserSidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthStore } from "@/stores/auth/auth.store";
 import type { Notification } from "@/types/notification.types";
 import {
-  normalizeNotificationType,
-  getNotificationMessage,
   getNotificationLabel,
+  getNotificationMessage,
+  normalizeNotificationType,
 } from "@/types/notification.types";
-import { useAuthStore } from "@/stores/auth/auth.store";
-import { useMemo } from "react";
 
 type Tab = "all" | "requests" | "invitations";
+type InviteAction = "accept" | "reject";
+
+const INVITE_TYPES = new Set([
+  "invite_sent",
+  "invite_accepted",
+  "invite_rejected",
+]);
+
+function isInviteType(type: string) {
+  return INVITE_TYPES.has(normalizeNotificationType(type));
+}
 
 function getNotificationIcon(type: string) {
   const t = normalizeNotificationType(type);
   switch (t) {
-    case "join_request": return UserPlus;
-    case "join_accepted": return CheckCircle;
-    case "join_rejected": return XCircle;
-    case "invite_sent": return Mail;
-    case "invite_accepted": return CheckCircle;
-    case "invite_rejected": return XCircle;
-    default: return Bell;
+    case "join_request":
+      return UserPlus;
+    case "join_accepted":
+      return CheckCircle;
+    case "join_rejected":
+      return XCircle;
+    case "invite_sent":
+      return Mail;
+    case "invite_accepted":
+      return CheckCircle;
+    case "invite_rejected":
+      return XCircle;
+    default:
+      return Bell;
   }
 }
 
@@ -77,7 +98,15 @@ function formatTimeAgo(value: string) {
 }
 
 // ─── Notification Card ─────────────────────────────────────────────────────
-function NotifCard({ notif }: { notif: Notification }) {
+function NotifCard({
+  notif,
+  onRespondInvite,
+  isResponding,
+}: {
+  notif: Notification;
+  onRespondInvite?: (notif: Notification, action: InviteAction) => void;
+  isResponding?: boolean;
+}) {
   const Icon = getNotificationIcon(notif.type);
   const initials = (notif.actorName ?? "??")
     .split(" ")
@@ -89,25 +118,38 @@ function NotifCard({ notif }: { notif: Notification }) {
   const label = getNotificationLabel(normalizedType);
   const message = getNotificationMessage(notif);
   const badgeClass = getNotifBadgeClass(notif.type);
+  const canRespond =
+    normalizedType === "invite_sent" &&
+    !!notif.referenceId &&
+    !!onRespondInvite;
 
   return (
     <Card
       className={`rounded-2xl border transition-shadow hover:shadow-md ${
-        notif.isRead ? "border-neutral-200 bg-white" : "border-indigo-200 bg-indigo-50/50"
+        notif.isRead
+          ? "border-neutral-200 bg-white"
+          : "border-indigo-200 bg-indigo-50/50"
       }`}
     >
       <div className="flex items-start gap-4 p-5">
-        <div className={`shrink-0 rounded-full p-2 ${
-          notif.isRead ? "bg-neutral-100" : "bg-indigo-100"
-        }`}>
-          <Icon className={`h-5 w-5 ${
-            notif.isRead ? "text-neutral-500" : "text-indigo-600"
-          }`} />
+        <div
+          className={`shrink-0 rounded-full p-2 ${
+            notif.isRead ? "bg-neutral-100" : "bg-indigo-100"
+          }`}
+        >
+          <Icon
+            className={`h-5 w-5 ${
+              notif.isRead ? "text-neutral-500" : "text-indigo-600"
+            }`}
+          />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="secondary" className={`text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>
+            <Badge
+              variant="secondary"
+              className={`text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}
+            >
               {label}
             </Badge>
             {!notif.isRead && (
@@ -121,6 +163,34 @@ function NotifCard({ notif }: { notif: Notification }) {
             <Clock className="h-3 w-3" />
             {formatTimeAgo(notif.createdAt)}
           </p>
+
+          {canRespond && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={isResponding}
+                onClick={() => onRespondInvite(notif, "accept")}
+              >
+                {isResponding ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Terima
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                disabled={isResponding}
+                onClick={() => onRespondInvite(notif, "reject")}
+              >
+                {isResponding ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Tolak
+              </Button>
+            </div>
+          )}
         </div>
 
         <Avatar className="h-10 w-10 shrink-0">
@@ -140,6 +210,7 @@ interface NotificationsPageProps {
 
 export function NotificationsPage({ role: roleProp }: NotificationsPageProps) {
   const auth = useAuthStore();
+  const queryClient = useQueryClient();
   const role = roleProp ?? auth.role ?? "Mahasiswa";
 
   const [activeTab, setActiveTab] = useState("all" as Tab);
@@ -149,27 +220,112 @@ export function NotificationsPage({ role: roleProp }: NotificationsPageProps) {
     queryFn: () => notificationsApi.getNotifications(),
   });
 
-  // Group notifications by tab
-  const filteredNotifications = useMemo(() => {
-    const all = notificationsQuery.data ?? [];
+  const respondInviteMutation = useMutation({
+    mutationFn: ({
+      membershipId,
+      action,
+    }: {
+      membershipId: string;
+      action: InviteAction;
+    }) => membershipApi.respondToInvite(membershipId, { action }),
+    onSuccess: async (_, variables) => {
+      toast.success(
+        variables.action === "accept"
+          ? "Undangan berhasil diterima."
+          : "Undangan berhasil ditolak.",
+      );
 
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["membership", "invitations"],
+      });
+    },
+    onError: () => {
+      toast.error("Gagal memproses undangan.");
+    },
+  });
+
+  const handleRespondInvite = (notif: Notification, action: InviteAction) => {
+    if (!notif.referenceId) {
+      toast.error("ID undangan tidak tersedia.");
+      return;
+    }
+
+    respondInviteMutation.mutate({
+      membershipId: notif.referenceId,
+      action,
+    });
+  };
+
+  const displayNotifications = useMemo(() => {
+    const all = [...(notificationsQuery.data ?? [])].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    const inviteThreads = new Map<
+      string,
+      {
+        sent: Notification | null;
+        response: Notification | null;
+      }
+    >();
+    const passthrough: Notification[] = [];
+
+    for (const notification of all) {
+      const type = normalizeNotificationType(notification.type);
+
+      if (notification.referenceId && isInviteType(notification.type)) {
+        const entry = inviteThreads.get(notification.referenceId) ?? {
+          sent: null,
+          response: null,
+        };
+
+        if (type === "invite_sent") {
+          entry.sent = notification;
+        } else {
+          entry.response = notification;
+        }
+
+        inviteThreads.set(notification.referenceId, entry);
+        continue;
+      }
+
+      passthrough.push(notification);
+    }
+
+    const threadedInvitations = Array.from(inviteThreads.values())
+      .map(({ sent, response }) => response ?? sent)
+      .filter(
+        (notification): notification is Notification => notification !== null,
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+    return [...passthrough, ...threadedInvitations].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [notificationsQuery.data, activeTab]);
+
+  const filteredNotifications = useMemo(() => {
     if (activeTab === "requests") {
-      return all.filter(
-        (n) => normalizeNotificationType(n.type) === "join_request"
+      return displayNotifications.filter(
+        (n) => normalizeNotificationType(n.type) === "join_request",
       );
     }
 
     if (activeTab === "invitations") {
-      return all.filter(
-        (n) =>
-          normalizeNotificationType(n.type) === "invite_sent"
-      );
+      return displayNotifications.filter((n) => isInviteType(n.type));
     }
 
-    return all;
-  }, [notificationsQuery.data, activeTab]);
+    return displayNotifications;
+  }, [displayNotifications, activeTab]);
 
-  const unreadCount = (notificationsQuery.data ?? []).filter((n) => !n.isRead).length;
+  const unreadCount = (notificationsQuery.data ?? []).filter(
+    (n) => !n.isRead,
+  ).length;
 
   return (
     <main className="min-h-screen bg-[#f7f7fb] xl:pl-72">
@@ -182,7 +338,9 @@ export function NotificationsPage({ role: roleProp }: NotificationsPageProps) {
           onCreatePost={() => {}}
         />
       ) : (
-        <UserSidebar userName={auth.user?.username ?? auth.user?.email ?? undefined} />
+        <UserSidebar
+          userName={auth.user?.username ?? auth.user?.email ?? undefined}
+        />
       )}
 
       {/* Sticky Header */}
@@ -216,7 +374,11 @@ export function NotificationsPage({ role: roleProp }: NotificationsPageProps) {
                   : "border-transparent text-neutral-500 hover:border-neutral-300"
               }`}
             >
-              {tab === "all" ? "Semua" : tab === "requests" ? "Request" : "Undangan"}
+              {tab === "all"
+                ? "Semua"
+                : tab === "requests"
+                  ? "Request"
+                  : "Undangan"}
             </button>
           ))}
         </div>
@@ -242,29 +404,43 @@ export function NotificationsPage({ role: roleProp }: NotificationsPageProps) {
         )}
 
         {/* Empty */}
-        {!notificationsQuery.isLoading && filteredNotifications.length === 0 && (
-          <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-14 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50">
-              <Inbox className="h-8 w-8 text-indigo-700" />
+        {!notificationsQuery.isLoading &&
+          filteredNotifications.length === 0 && (
+            <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-14 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50">
+                <Inbox className="h-8 w-8 text-indigo-700" />
+              </div>
+              <h2 className="text-lg font-bold text-neutral-950">
+                {activeTab === "all"
+                  ? "Tidak ada notifikasi"
+                  : activeTab === "requests"
+                    ? "Tidak ada request"
+                    : "Tidak ada undangan"}
+              </h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-neutral-500">
+                {activeTab === "all"
+                  ? "Request dan undangan akan muncul di sini."
+                  : activeTab === "requests"
+                    ? "Request bergabung dari mahasiswa akan muncul di sini."
+                    : "Undangan dari organisasi akan muncul di sini."}
+              </p>
             </div>
-            <h2 className="text-lg font-bold text-neutral-950">
-              {activeTab === "all" ? "Tidak ada notifikasi" : activeTab === "requests" ? "Tidak ada request" : "Tidak ada undangan"}
-            </h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-neutral-500">
-              {activeTab === "all"
-                ? "Request dan undangan akan muncul di sini."
-                : activeTab === "requests"
-                ? "Request bergabung dari mahasiswa akan muncul di sini."
-                : "Undangan dari organisasi akan muncul di sini."}
-            </p>
-          </div>
-        )}
+          )}
 
         {/* List */}
         {!notificationsQuery.isLoading && filteredNotifications.length > 0 && (
           <div className="space-y-3">
             {filteredNotifications.map((notif) => (
-              <NotifCard key={notif.id} notif={notif} />
+              <NotifCard
+                key={notif.id}
+                notif={notif}
+                onRespondInvite={handleRespondInvite}
+                isResponding={
+                  respondInviteMutation.isPending &&
+                  respondInviteMutation.variables?.membershipId ===
+                    notif.referenceId
+                }
+              />
             ))}
           </div>
         )}

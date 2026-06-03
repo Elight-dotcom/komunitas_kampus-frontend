@@ -1,10 +1,17 @@
-import { Bell, Compass, Home, LogOut, Mail, Settings, UserRound } from "lucide-react";
+import {
+  Bell,
+  Compass,
+  Home,
+  LogOut,
+  Mail,
+  Settings,
+  UserRound,
+} from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/stores/auth/auth.store";
 import { httpClient } from "@/api/common/http-client";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuthStore } from "@/stores/auth/auth.store";
 import { useMutation } from "@tanstack/react-query";
 
 interface UserSidebarProps {
@@ -60,7 +67,7 @@ export function UserSidebar({ userName }: UserSidebarProps) {
           <Bell className="h-5 w-5" />
           Notifications
         </NavLink>
-        <NavLink to="/user/messages" className={navClassName}>
+        <NavLink to="/chat" className={navClassName}>
           <Mail className="h-5 w-5" />
           Messaging
         </NavLink>

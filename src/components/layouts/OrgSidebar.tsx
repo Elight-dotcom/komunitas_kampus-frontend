@@ -5,15 +5,15 @@ import {
   Mail,
   PlusSquare,
   Settings,
-  Users,
   UserRound,
+  Users,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 
+import { httpClient } from "@/api/common/http-client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth/auth.store";
-import { httpClient } from "@/api/common/http-client";
 import { useMutation } from "@tanstack/react-query";
 
 interface OrgSidebarProps {
@@ -89,7 +89,7 @@ export function OrgSidebar({
           <Bell className="h-5 w-5" />
           Notifications
         </NavLink>
-        <NavLink to="#" className={navClassName}>
+        <NavLink to="/chat" className={navClassName}>
           <Mail className="h-5 w-5" />
           Messaging
         </NavLink>

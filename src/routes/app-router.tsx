@@ -4,14 +4,15 @@ import {
   RegisterOrganizationPage,
   RegisterUserPage,
 } from "@/pages/auth";
+import ChatDashboardPage from "@/pages/chat/ChatDashboardPage";
 import { MemberListPage } from "@/pages/members";
 import { NotificationsPage } from "@/pages/notifications";
-import UserHomePage from "@/pages/user/UserHomePage";
+import OrgHomePage from "@/pages/organization/OrgHomePage";
 import ExplorePage from "@/pages/user/ExplorePage";
 import OrganizationProfilePage from "@/pages/user/OrganizationProfilePage";
-import OrgHomePage from "@/pages/organization/OrgHomePage";
-import { createBrowserRouter, redirect } from "react-router-dom";
+import UserHomePage from "@/pages/user/UserHomePage";
 import { useAuthStore } from "@/stores/auth/auth.store";
+import { createBrowserRouter, redirect } from "react-router-dom";
 
 function authLoader() {
   const auth = useAuthStore.getState();
@@ -97,5 +98,10 @@ export const appRouter = createBrowserRouter([
     path: "/organizations/:orgId/members",
     element: <MemberListPage />,
     loader: orgLoader,
+  },
+  {
+    path: "/chat",
+    element: <ChatDashboardPage />,
+    loader: authLoader,
   },
 ]);

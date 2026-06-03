@@ -12,6 +12,7 @@ import { storiesApi } from "@/api/stories/stories.api";
 import { StoryBar } from "@/components/stories";
 
 import { postsApi } from "@/api/posts/posts.api";
+import { OrgSidebar } from "@/components/layouts/OrgSidebar";
 import {
   CreatePostModal,
   EditPostModal,
@@ -24,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth/auth.store";
 import type { Post } from "@/types/posts/post.types";
-import { OrgSidebar } from "@/components/layouts/OrgSidebar";
 
 const PAGE_SIZE = 10;
 
@@ -313,7 +313,7 @@ export default function FeedPage() {
                 onEdit={(selectedPost) => setEditingPost(selectedPost)}
                 onDelete={(selectedPost) => {
                   const confirmed = window.confirm(
-                    "Yakin ingin menghapus postingan ini? File media juga akan dihapus dari Backblaze.",
+                    "Yakin ingin menghapus postingan ini? File media juga akan dihapus dari MinIO.",
                   );
 
                   if (confirmed) {

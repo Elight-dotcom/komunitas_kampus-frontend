@@ -36,7 +36,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { resolveBackblazeFileUrl } from "@/lib/backblaze";
 import type { Post, PostMedia } from "@/types/posts/post.types";
 import {
   normalizeMediaStatus,
@@ -91,7 +90,21 @@ function formatNumber(value: number) {
 }
 
 function resolveFileUrl(fileUrl: string) {
-  return resolveBackblazeFileUrl(fileUrl);
+  if (!fileUrl) return "";
+
+  if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+    return fileUrl;
+  }
+
+  const publicBaseUrl = import.meta.env.VITE_MINIO_PUBLIC_BASE_URL as
+    | string
+    | undefined;
+
+  if (!publicBaseUrl) {
+    return fileUrl;
+  }
+
+  return `${publicBaseUrl.replace(/\/$/, "")}/${fileUrl.replace(/^\//, "")}`;
 }
 
 function visibilityBadgeClassName(visibility: Post["visibility"]) {
@@ -199,8 +212,8 @@ function DocumentMedia({ item }: { item: PostMedia }) {
             loading={<Skeleton className="h-96 w-72 rounded-xl" />}
             error={
               <div className="p-8 text-center text-sm text-neutral-500">
-                PDF belum bisa ditampilkan. Pastikan file URL publik Backblaze
-                sudah benar.
+                PDF belum bisa ditampilkan. Pastikan file URL publik MinIO sudah
+                benar.
               </div>
             }
           >
